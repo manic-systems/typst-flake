@@ -1,0 +1,108 @@
+name: Update
+
+on:
+  schedule:
+    # Run weekly on Monday at 05:17 UTC.
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+
+      - name: Update Typst branch pin
+        run: nix develop --command tack update typst
+
+      - name: Diff
+        id: diff
+        run: |
+          if git diff --quiet .tack/pins.lock.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload Tack lock
+        if: steps.diff.outputs.changed == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: tack-lock
+          path: .tack/pins.lock.json
+
+  check:
+    needs: update
+    if: needs.update.outputs.changed == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+          - macos-latest
+          - macos-15-intel
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Download Tack lock
+        uses: actions/download-artifact@v8
+        with:
+          name: tack-lock
+          path: .tack
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+
+      - name: Check Tack lock
+        run: |
+          system="$(nix eval --impure --raw --expr builtins.currentSystem)"
+          nix build ".#checks.${system}.tack-lock" --print-build-logs --no-link
+
+      - name: Build Typst packages
+        run: nix build .#default .#typst-master --print-build-logs --no-link
+
+  commit:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Download Tack lock
+        uses: actions/download-artifact@v8
+        with:
+          name: tack-lock
+          path: .tack
+
+      - name: Commit, PR, and merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          git switch --create "update-typst-${{ github.run_id }}-${{ github.run_attempt }}"
+          git add .tack/pins.lock.json
+          git commit --message "Update Typst source pins"
+          git push origin HEAD
+
+          { echo '```diff'; git diff HEAD^ -- .tack/pins.lock.json; echo '```'; } \
+            | gh pr create --title "Update Typst source pins" --body-file -
+          gh pr merge --rebase --delete-branch || { gh pr close --delete-branch; exit 1; }
