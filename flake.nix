@@ -2,171 +2,126 @@
   description = "Typst builds tracked directly from upstream Git sources";
 
   outputs =
-    {
-      self,
-      ...
-    }@args:
+    { self, ... }:
     let
-      inputs = (import ./.tack) {
-        overrides = args.tackOverrides or { };
-      };
+      inputs = import ./.tack;
 
       inherit (inputs) nixpkgs;
       inherit (nixpkgs) lib;
-      forEachSystem = lib.genAttrs lib.systems.flakeExposed;
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+        "x86_64-darwin"
+        "aarch64-darwin"
+      ];
+      forEachSystem = lib.genAttrs systems;
       pkgsForEach = nixpkgs.legacyPackages;
 
-      inherit (lib.attrsets) listToAttrs;
+      inherit (lib.attrsets) mapAttrs;
       inherit (lib.meta) getExe;
-      inherit (lib.strings)
-        concatStringsSep
-        hasPrefix
-        removePrefix
-        replaceStrings
-        splitString
-        ;
-      inherit (lib.trivial) importJSON importTOML;
+      inherit (lib.trivial) importJSON;
 
-      tackManifest = importTOML ./.tack/pins.toml;
-      pinsLock = importJSON ./.tack/pins.lock.json;
+      sources = importJSON ./sources.json;
+      latestRelease = sources.latest;
 
-      typstReleaseInputs = builtins.sort (
-        a: b: (pinsLock.${a}.lastModified or 0) > (pinsLock.${b}.lastModified or 0)
-      ) (builtins.filter (name: hasPrefix "typst_" name) (builtins.attrNames tackManifest.inputs));
-
-      pinVersion =
-        pin:
+      perSystem = forEachSystem (
+        system:
         let
-          parts = splitString "_" (removePrefix "typst_" pin);
-          major = builtins.elemAt parts 0;
-          minor = builtins.elemAt parts 1;
-          patch = builtins.elemAt parts 2;
-          prerelease = lib.lists.drop 3 parts;
-        in
-        if major == "23" then
-          concatStringsSep "-" parts
-        else
-          concatStringsSep "." [
-            major
-            minor
-            patch
-          ]
-          + lib.optionalString (prerelease != [ ]) "-${concatStringsSep "." prerelease}";
+          pkgs = pkgsForEach.${system};
+          craneLib = inputs.crane.mkLib pkgs;
 
-      releaseVersions = map pinVersion typstReleaseInputs;
-      latestRelease = builtins.head releaseVersions;
-
-      versionName = version: replaceStrings [ "." "-" "+" ] [ "_" "_" "_" ] version;
-      versionAttr = version: "typst-${versionName version}";
-
-      releaseAttrs =
-        f:
-        listToAttrs (
-          map (
-            pin:
-            let
-              version = pinVersion pin;
-            in
+          mkTypst =
             {
-              name = versionAttr version;
-              value = f { inherit pin version; };
+              source,
+              version,
+              branch ? null,
+            }:
+            pkgs.callPackage ./package.nix
+              {
+                inherit craneLib systems;
+              }
+              {
+                src = fetchTree source;
+                rev = source.rev or "unknown";
+                inherit branch version;
+              };
+
+          releases = mapAttrs (
+            version: source:
+            mkTypst {
+              inherit source version;
             }
-          ) typstReleaseInputs
-        );
+          ) sources.versions;
+
+          latest = releases.${latestRelease};
+          mainPackage = mkTypst {
+            source = sources.main;
+            version = latestRelease;
+            branch = "main";
+          };
+
+          mkApp = package: {
+            type = "app";
+            program = getExe package;
+          };
+        in
+        {
+          packages = releases // {
+            default = latest;
+            typst = latest;
+            main = mainPackage;
+            "typst-main" = mainPackage;
+          };
+
+          checks = {
+            sources-json = pkgs.runCommand "typst-sources-json" { nativeBuildInputs = [ pkgs.jq ]; } ''
+              jq empty ${./sources.json}
+              touch $out
+            '';
+
+            tack-lock = pkgs.runCommand "typst-tack-lock" { nativeBuildInputs = [ pkgs.jq ]; } ''
+              jq empty ${./.tack/pins.lock.json}
+              touch $out
+            '';
+
+            typst-fmt = latest.passthru.checks.fmt;
+            typst-clippy = latest.passthru.checks.clippy;
+            typst-test = latest.passthru.checks.test;
+          };
+
+          devShells.default = pkgs.callPackage ./shell.nix {
+            inherit craneLib;
+            tack = inputs.tack.packages.${system}.default;
+            typst = mainPackage;
+          };
+
+          apps = {
+            default = mkApp latest;
+            main = mkApp mainPackage;
+          };
+        }
+      );
     in
     {
       formatter = forEachSystem (system: pkgsForEach.${system}.nixfmt-tree);
 
-      packages = forEachSystem (
-        system:
-        let
-          pkgs = pkgsForEach.${system};
-          typstPackage = pkgs.callPackage ./package.nix { };
+      packages = mapAttrs (_: value: value.packages) perSystem;
 
-          mkTypst =
-            args@{ pin, ... }:
-            typstPackage (
-              args
-              // {
-                src = inputs.${pin};
-                rev = pinsLock.${pin}.rev or "unknown";
-              }
-            );
+      apps = mapAttrs (_: value: value.apps) perSystem;
 
-          releases = releaseAttrs (
-            { pin, version }:
-            mkTypst {
-              inherit pin version;
-            }
-          );
+      checks = mapAttrs (_: value: value.checks) perSystem;
 
-          latest = releases.${versionAttr latestRelease};
-          master = mkTypst {
-            pin = "typst";
-            version = latestRelease;
-            branch = "main";
-          };
-        in
-        releases
-        // {
-          default = latest;
-          typst = latest;
-          "typst-master" = master;
-        }
-      );
-
-      apps = forEachSystem (
-        system:
-        let
-          packages = self.packages.${system};
-        in
-        {
-          default = {
-            type = "app";
-            program = getExe packages.default;
-          };
-
-          "typst-master" = {
-            type = "app";
-            program = getExe packages."typst-master";
-          };
-        }
-      );
-
-      checks = forEachSystem (
-        system:
-        let
-          pkgs = pkgsForEach.${system};
-        in
-        {
-          tack-lock = pkgs.runCommand "typst-tack-lock" { nativeBuildInputs = [ pkgs.jq ]; } ''
-            jq empty ${./.tack/pins.lock.json}
-            touch $out
-          '';
-        }
-      );
-
-      devShells = forEachSystem (
-        system:
-        let
-          pkgs = pkgsForEach.${system};
-        in
-        {
-          default = pkgs.callPackage ./shell.nix {
-            tack = inputs.tack.packages.${system}.default;
-          };
-        }
-      );
+      devShells = mapAttrs (_: value: value.devShells) perSystem;
 
       overlays.default =
         final: prev:
         let
           packages = self.packages.${final.system};
         in
-        releaseAttrs ({ version, ... }: packages.${versionAttr version})
-        // {
-          typst = packages.typst;
-          "typst-master" = packages."typst-master";
+        {
+          typst = packages.default;
+          typstpkgs = packages;
+          "typst-main" = packages.main;
         };
     };
 }

@@ -1,9 +1,6 @@
 [shorturls]
 gh = "github:{path}"
 
-[tack]
-recomposable = true
-
 [all_follow]
 
 [inputs.tack]
@@ -12,114 +9,5 @@ url = "github:manic-systems/tack"
 [inputs.nixpkgs]
 url = "https://channels.nixos.org/nixpkgs-unstable/nixexprs.tar.xz"
 
-[inputs.typst]
-url = "git+https://github.com/typst/typst.git?ref=main"
-type = "fetch"
-
-[inputs.typst_0_14_2]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v0.14.2"
-type = "fetch"
-
-[inputs.typst_0_14_1]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v0.14.1"
-type = "fetch"
-
-[inputs.typst_0_14_0]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v0.14.0"
-type = "fetch"
-
-[inputs.typst_0_14_0_rc_2]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v0.14.0-rc.2"
-type = "fetch"
-
-[inputs.typst_0_14_0_rc_1]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v0.14.0-rc.1"
-type = "fetch"
-
-[inputs.typst_0_13_1]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v0.13.1"
-type = "fetch"
-
-[inputs.typst_0_13_0]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v0.13.0"
-type = "fetch"
-
-[inputs.typst_0_13_0_rc1]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v0.13.0-rc1"
-type = "fetch"
-
-[inputs.typst_0_12_0]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v0.12.0"
-type = "fetch"
-
-[inputs.typst_0_12_0_rc2]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v0.12.0-rc2"
-type = "fetch"
-
-[inputs.typst_0_12_0_rc1]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v0.12.0-rc1"
-type = "fetch"
-
-[inputs.typst_0_11_1]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v0.11.1"
-type = "fetch"
-
-[inputs.typst_0_11_0]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v0.11.0"
-type = "fetch"
-
-[inputs.typst_0_11_0_rc1]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v0.11.0-rc1"
-type = "fetch"
-
-[inputs.typst_0_10_0]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v0.10.0"
-type = "fetch"
-
-[inputs.typst_0_9_0]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v0.9.0"
-type = "fetch"
-
-[inputs.typst_0_8_0]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v0.8.0"
-type = "fetch"
-
-[inputs.typst_0_7_0]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v0.7.0"
-type = "fetch"
-
-[inputs.typst_0_6_0]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v0.6.0"
-type = "fetch"
-
-[inputs.typst_0_5_0]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v0.5.0"
-type = "fetch"
-
-[inputs.typst_0_4_0]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v0.4.0"
-type = "fetch"
-
-[inputs.typst_0_3_0]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v0.3.0"
-type = "fetch"
-
-[inputs.typst_0_2_0]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v0.2.0"
-type = "fetch"
-
-[inputs.typst_0_1_0]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v0.1.0"
-type = "fetch"
-
-[inputs.typst_23_03_28]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v23-03-28"
-type = "fetch"
-
-[inputs.typst_23_03_21_2]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v23-03-21-2"
-type = "fetch"
-
-[inputs.typst_23_03_21]
-url = "git+https://github.com/typst/typst.git?ref=refs/tags/v23-03-21"
-type = "fetch"
+[inputs.crane]
+url = "github:ipetkov/crane"

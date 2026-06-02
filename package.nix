@@ -1,16 +1,16 @@
 {
+  craneLib,
   installShellFiles,
   lib,
   libiconv,
   openssl,
   pkg-config,
-  rustPlatform,
   stdenv,
+  systems,
 }:
 
 {
   src,
-  pin,
   version,
   rev,
   branch ? null,
@@ -18,14 +18,15 @@
 
 let
   inherit (lib.lists) optionals;
-  inherit (lib.strings) concatStringsSep substring;
+  inherit (lib.strings) concatStringsSep hasPrefix substring;
 
-  isMaster = branch != null;
-  kind = if isMaster then "master" else "release";
+  isMain = branch != null;
+  kind = if isMain then "main" else "release";
   shortRev = substring 0 12 rev;
   cargoToml = lib.importTOML "${src}/Cargo.toml";
   cargoVersion = cargoToml.workspace.package.version or version;
-  packageVersion = if isMaster then "${cargoVersion}-master-${shortRev}" else version;
+  packageVersion = if isMain then "${cargoVersion}-main-${shortRev}" else version;
+  pname = if isMain then "typst-main" else "typst";
 
   rustflags = concatStringsSep " " (
     optionals (stdenv.hostPlatform.rust.rustcTargetSpec == "x86_64-unknown-linux-gnu") [
@@ -33,76 +34,109 @@ let
       "-Clink-self-contained=-linker"
     ]
   );
-in
-rustPlatform.buildRustPackage {
-  pname = if isMaster then "typst-master" else "typst";
-  version = packageVersion;
 
-  inherit src;
+  sourcePaths = [
+    "Cargo.toml"
+    "Cargo.lock"
+    "rustfmt.toml"
+    "crates"
+    "docs"
+    "tests"
+  ];
 
-  cargoLock = {
-    lockFile = "${src}/Cargo.lock";
-    # Typst's lockfile contains pinned git dependencies, and maintaining
-    # outputHashes for every historical release would duplicate Cargo.lock.
-    allowBuiltinFetchGit = true;
+  cleanSrc = lib.sources.cleanSourceWith {
+    inherit src;
+    filter = path: _: builtins.any (accepted: hasPrefix "${src}/${accepted}" path) sourcePaths;
   };
-  cargoBuildFlags = [
-    "-p"
-    "typst-cli"
-  ];
 
-  nativeBuildInputs = [
-    installShellFiles
-    pkg-config
-  ];
+  commonArgs = {
+    src = cleanSrc;
+    inherit pname;
+    version = packageVersion;
 
-  buildInputs = [
-    openssl
-  ]
-  ++ optionals stdenv.isDarwin [
-    libiconv
-  ];
+    strictDeps = true;
 
-  doCheck = false;
+    nativeBuildInputs = [
+      pkg-config
+    ];
 
-  env = {
+    buildInputs = [
+      openssl
+    ]
+    ++ optionals stdenv.isDarwin [
+      libiconv
+    ];
+
+    env = {
+      RUSTFLAGS = rustflags;
+    };
+
+    meta = {
+      description = "A modern markup-based typesetting system";
+      homepage = "https://github.com/typst/typst";
+      license = lib.licenses.asl20;
+      mainProgram = "typst";
+      platforms = systems;
+    };
+  };
+
+  cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+
+  checks = {
+    fmt = craneLib.cargoFmt commonArgs;
+
+    clippy = craneLib.cargoClippy (
+      commonArgs
+      // {
+        inherit cargoArtifacts;
+        cargoClippyExtraArgs = "--workspace -- --deny warnings";
+      }
+    );
+
+    test = craneLib.cargoTest (
+      commonArgs
+      // {
+        inherit cargoArtifacts;
+        cargoTestExtraArgs = "--workspace";
+      }
+    );
+  };
+in
+craneLib.buildPackage (
+  commonArgs
+  // {
+    inherit cargoArtifacts;
+
+    cargoExtraArgs = "-p typst-cli";
+    doCheck = false;
+
+    nativeBuildInputs = commonArgs.nativeBuildInputs ++ [
+      installShellFiles
+    ];
+
+    postInstall = ''
+      installManPage crates/typst-cli/artifacts/*.1
+
+      installShellCompletion \
+        crates/typst-cli/artifacts/typst.{bash,fish} \
+        --zsh crates/typst-cli/artifacts/_typst
+    '';
+
     GEN_ARTIFACTS = "artifacts";
     TYPST_COMMIT_SHA = rev;
     TYPST_VERSION = cargoVersion;
+
+    passthru = {
+      inherit
+        branch
+        cargoArtifacts
+        cargoVersion
+        checks
+        commonArgs
+        kind
+        rev
+        rustflags
+        ;
+    };
   }
-  // lib.optionalAttrs (rustflags != "") {
-    RUSTFLAGS = rustflags;
-  };
-
-  postInstall = ''
-    shopt -s nullglob
-
-    manpages=(crates/typst-cli/artifacts/*.1)
-    if [ "''${#manpages[@]}" -gt 0 ]; then
-      installManPage "''${manpages[@]}"
-    fi
-
-    completions=(crates/typst-cli/artifacts/typst.{bash,fish})
-    zsh_completion=crates/typst-cli/artifacts/_typst
-    if [ "''${#completions[@]}" -gt 0 ] && [ -f "$zsh_completion" ]; then
-      installShellCompletion "''${completions[@]}" --zsh "$zsh_completion"
-    fi
-  '';
-
-  passthru = {
-    inherit
-      branch
-      kind
-      pin
-      rev
-      ;
-  };
-
-  meta = {
-    description = "A modern markup-based typesetting system";
-    homepage = "https://github.com/typst/typst";
-    license = lib.licenses.asl20;
-    mainProgram = "typst";
-    platforms = lib.systems.flakeExposed;
-  };
-}
+)
