@@ -12,6 +12,9 @@
 This is a simple project, tracking upstream Typst and exposing an auto-updating flake for _all_ typst releases and the moving `main` branch.
 The flake tracks Typst source pins in `sources.json` and builds Typst with nixpkgs' Rust packaging. Typst releases are exposed by version, e.g. `.#"0.14.2"`. The continuously moving `main` branch is exposed as `.#main`; the latest pinned release is exposed as `.#default` and `.#typst`.
 
+Typst itself used to house a flake in the main repo, but it was [dropped in early 2026](https://github.com/typst/typst/pull/7512). An "offical" flake continues to live at
+<https://github.com/typst/typst-flake>, but that one only tracks the latest pinned release, as opposed to this project, which also exposes the current `main` branch.
+
 ## Packages
 
 Build the latest pinned release:
