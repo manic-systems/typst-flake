@@ -77,3 +77,7 @@ The Typst source pins are located in `sources.json`:
   }
 }
 ```
+
+# License
+
+The project authors revoke all copyright and related rights to this project and dedicate it to the public domain. For more information, please refer to <https://unlicense.org/> and the [`UNLICENSE` file](./UNLICENSE) in this repository.
