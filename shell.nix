@@ -1,25 +1,10 @@
 {
-  git,
-  jq,
-  mkShell,
-  nixfmt-tree,
+  mkShellNoCC,
   nushell,
-  rust-analyzer,
-  rustPlatform,
-  typst,
 }:
 
-mkShell {
-  inputsFrom = [ typst ];
-
-  RUSTFLAGS = typst.passthru.rustflags;
-  RUST_SRC_PATH = rustPlatform.rustLibSrc;
-
-  packages = [
-    git
-    jq
-    nixfmt-tree
+mkShellNoCC {
+  buildInputs = [
     nushell
-    rust-analyzer
   ];
 }
