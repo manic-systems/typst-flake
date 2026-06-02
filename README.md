@@ -9,12 +9,8 @@
 
 ---
 
-This flake tracks Typst source pins in `sources.json` and builds Typst with
-nixpkgs' Rust packaging.
-
-- releases are exposed by version, like `.#"0.14.2"`
-- the moving upstream branch is exposed as `.#main`
-- `default` and `typst` point at the latest pinned release
+This is a simple project, tracking upstream Typst and exposing an auto-updating flake for _all_ typst releases and the moving `main` branch.
+The flake tracks Typst source pins in `sources.json` and builds Typst with nixpkgs' Rust packaging. Typst releases are exposed by version, e.g. `.#"0.14.2"`. The continuously moving `main` branch is exposed as `.#main`; the latest pinned release is exposed as `.#default` and `.#typst`.
 
 ## Packages
 
@@ -59,7 +55,7 @@ Update upstream `main` and add any missing Typst release tags:
 nu scripts/update-sources.nu
 ```
 
-Typst source pins live in `sources.json`:
+The Typst source pins are located in `sources.json`:
 
 ```json
 {
@@ -78,7 +74,3 @@ Typst source pins live in `sources.json`:
   }
 }
 ```
-
-The update workflow runs weekly and can also be triggered manually from GitHub
-Actions. When `sources.json` changes, CI validates the source catalog and builds
-`default` and `main` across the configured runner matrix.
