@@ -70,28 +70,8 @@ jobs:
       - name: Install Nix
         uses: cachix/install-nix-action@v31
 
-      - name: Check source pins
-        run: |
-          system="$(nix eval --impure --raw --expr builtins.currentSystem)"
-          nix build \
-            ".#checks.${system}.sources-json" \
-            ".#checks.${system}.tack-lock" \
-            --print-build-logs \
-            --no-link
-
       - name: Build Typst packages
         run: nix build .#default .#main --print-build-logs --no-link
-
-      - name: Run Typst checks
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          system="$(nix eval --impure --raw --expr builtins.currentSystem)"
-          nix build \
-            ".#checks.${system}.typst-fmt" \
-            ".#checks.${system}.typst-clippy" \
-            ".#checks.${system}.typst-test" \
-            --print-build-logs \
-            --no-link
 
   commit:
     needs: check

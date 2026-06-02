@@ -1,17 +1,15 @@
 {
-  craneLib,
   git,
   jq,
+  mkShell,
   nixfmt-tree,
   nushell,
   rust-analyzer,
   rustPlatform,
-  tack,
   typst,
 }:
 
-craneLib.devShell {
-  checks = typst.passthru.checks;
+mkShell {
   inputsFrom = [ typst ];
 
   RUSTFLAGS = typst.passthru.rustflags;
@@ -23,6 +21,5 @@ craneLib.devShell {
     nixfmt-tree
     nushell
     rust-analyzer
-    tack
   ];
 }

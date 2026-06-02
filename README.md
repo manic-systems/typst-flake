@@ -9,7 +9,8 @@
 
 ---
 
-This flake tracks Typst source pins in `sources.json` and builds Typst with Crane.
+This flake tracks Typst source pins in `sources.json` and builds Typst with
+nixpkgs' Rust packaging.
 
 - release outputs are inferred from `sources.json`
 - releases are exposed by version, like `.#"0.14.2"`
@@ -56,22 +57,11 @@ nix run '.#"0.14.2"' -- --version
 
 ## Checks
 
-Crane exposes Typst checks for the latest pinned release:
-
-```sh
-system="$(nix eval --impure --raw --expr builtins.currentSystem)"
-nix build ".#checks.${system}.typst-fmt" --no-link
-nix build ".#checks.${system}.typst-clippy" --no-link
-nix build ".#checks.${system}.typst-test" --no-link
-```
-
-There are also lightweight JSON checks for the Typst source catalog and Tack
-tooling pins:
+There is a lightweight JSON check for the Typst source catalog:
 
 ```sh
 system="$(nix eval --impure --raw --expr builtins.currentSystem)"
 nix build ".#checks.${system}.sources-json" --no-link
-nix build ".#checks.${system}.tack-lock" --no-link
 ```
 
 ## Overlay
@@ -135,6 +125,5 @@ Typst source pins live in `sources.json`:
 ```
 
 The update workflow runs weekly and can also be triggered manually from GitHub
-Actions. When `sources.json` changes, CI validates the source catalog and Tack
-lock, builds `default` and `main` across the configured runner matrix, and runs
-the Typst Crane checks on `ubuntu-latest`.
+Actions. When `sources.json` changes, CI validates the source catalog and builds
+`default` and `main` across the configured runner matrix.
