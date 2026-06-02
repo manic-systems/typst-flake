@@ -12,13 +12,9 @@
 This flake tracks Typst source pins in `sources.json` and builds Typst with
 nixpkgs' Rust packaging.
 
-- release outputs are inferred from `sources.json`
 - releases are exposed by version, like `.#"0.14.2"`
 - the moving upstream branch is exposed as `.#main`
 - `default` and `typst` point at the latest pinned release
-
-The Rust toolchain comes from the pinned `nixpkgs`; with the current pin that is
-Rust/Cargo `1.95.0`.
 
 ## Packages
 
@@ -41,53 +37,12 @@ Build upstream `main`:
 nix build .#main
 ```
 
-`typst-main` is kept as an alias for `main`:
-
-```sh
-nix build .#typst-main
-```
-
 Run Typst from the flake:
 
 ```sh
 nix run .#default -- --version
 nix run .#main -- --version
 nix run '.#"0.14.2"' -- --version
-```
-
-## Checks
-
-There is a lightweight JSON check for the Typst source catalog:
-
-```sh
-system="$(nix eval --impure --raw --expr builtins.currentSystem)"
-nix build ".#checks.${system}.sources-json" --no-link
-```
-
-## Overlay
-
-The default overlay exposes `typst`, `typst-main`, and a `typstpkgs` namespace
-containing every versioned package output:
-
-```nix
-{
-  inputs.typst-flake.url = "github:manic-systems/typst-flake";
-
-  outputs =
-    { nixpkgs, typst-flake, ... }:
-    let
-      system = "x86_64-linux";
-      pkgs = import nixpkgs {
-        inherit system;
-        overlays = [ typst-flake.overlays.default ];
-      };
-    in
-    {
-      packages.${system}.default = pkgs.typst;
-      packages.${system}.typst-main = pkgs.typstpkgs.main;
-      packages.${system}.typst-0_14_2 = pkgs.typstpkgs."0.14.2";
-    };
-}
 ```
 
 ## Updating
