@@ -4,7 +4,7 @@
 }:
 
 mkShellNoCC {
-  buildInputs = [
+  packages = [
     nushell
   ];
 }
